@@ -1,23 +1,21 @@
 import streamlit as st
-import random
-import time
+from openai import OpenAI
+from groq import Groq
 
 
-# Streamed response emulator
-def response_generator():
-    response = random.choice(
-        [
-            "Hello there! How can I assist you today?",
-            "Hi, human! Is there anything I can help you with?",
-            "Do you need help?",
-        ]
-    )
-    for word in response.split():
-        yield word + " "
-        time.sleep(0.05)
+st.title("Groq Chatbot with Streamlit")
 
+# # Set OpenAI API key from Streamlit secrets
+# client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-st.title("Simple chat")
+# Set a default model
+# if "openai_model" not in st.session_state:
+#     st.session_state["openai_model"] = "gpt-3.5-turbo"
+
+# Set default Groq model in session state
+if "groq_model" not in st.session_state:
+    st.session_state["groq_model"] = "llama3-8b-8192"
 
 # Initialize chat history
 if "messages" not in st.session_state:
@@ -28,15 +26,43 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# React to user input
+# Accept user input
 if prompt := st.chat_input("What is up?"):
-    # Display user message in chat message container
-    st.chat_message("user").markdown(prompt)
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
+    # Display user message in chat message container
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-    # Display assistant response in chat message container
+    # # Display assistant response in chat message container
+    # with st.chat_message("assistant"):
+    #     stream = client.chat.completions.create(
+    #         model=st.session_state["groq_model"],
+    #         messages=[
+    #             {"role": m["role"], "content": m["content"]}
+    #             for m in st.session_state.messages
+    #         ],
+    #         stream=True,
+    #     )
+    #     response = st.write_stream(stream)
+    # st.session_state.messages.append({"role": "assistant", "content": response})
+
+    # Prepare assistant response container
     with st.chat_message("assistant"):
-        response = st.write_stream(response_generator())
-    # Add assistant response to chat history
-    st.session_state.messages.append({"role": "assistant", "content": response})
+        response_container = st.empty()
+        full_response = ""
+
+        # Stream response from Groq
+        for chunk in client.chat.completions.create(
+            model=st.session_state["groq_model"],
+            messages=st.session_state.messages,
+            stream=True,
+        ):
+            delta = chunk.choices[0].delta.content or ""
+            full_response += delta
+            response_container.markdown(full_response + "▌")  # Live typing effect
+
+        response_container.markdown(full_response)  # Final display
+
+    # Save assistant message to chat history
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
