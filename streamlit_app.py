@@ -37,8 +37,6 @@ if prompt := st.chat_input("What's on your mind?"):
         # This will run the task and return the response
         response = crew.kickoff()
         full_response = str(response)  # ✅ Extract the final string
-        # lines = str(response).splitlines()
-        # full_response = "\n".join(lines[-3:])
 
         try:
             full_response = str(response.final_output)
@@ -49,11 +47,6 @@ if prompt := st.chat_input("What's on your mind?"):
                 full_response = full_text.split("Final Answer:")[-1].strip()
             else:
                 full_response = full_text.strip()
-
-        # # Simulate typing effect (optional)
-        # for char in full_response:
-        #     response_container.markdown(char + "▌")
-        # response_container.markdown(full_response)
 
         # Simulate typing effect
         typed_text = ""
